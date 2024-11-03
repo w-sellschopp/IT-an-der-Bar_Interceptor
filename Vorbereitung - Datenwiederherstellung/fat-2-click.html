@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Festplatten-Formatierung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 50px;
+        } 
+        .container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .fat, .data {
+            border: 2px solid #333;
+            padding: 10px;
+            margin: 10px;
+        }
+        .menu {
+            padding: 10px;
+            margin: 10px;
+            display: flex; /* Flexbox aktivieren */        
+            align-items: center; /* Vertikale Ausrichtung */
+        }
+        .clear-button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            font-size: 16px;
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 170px;
+            height: 60px;
+            display: inline-block;
+        }
+        .fastformat-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #6c47ff;
+            margin-left: 10px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 170px;
+            height: 60px;
+            display: inline-block;
+        }
+        .format-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 10px;
+            background-color: #ffb247;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 170px;
+            height: 60px;
+            display: inline-block;
+        }
+        .block {
+            border: 2px solid #666;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.3s, border-color 0.3s;
+            display: inline-block;
+            width: 80px;
+            height: 70px;
+            line-height: 20px;
+        }
+        .file {
+            border: 2px solid #666;
+            padding: 10px;
+            margin-right: 80px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.3s, border-color 0.3s;
+            display: inline-block;
+            width: 120px;
+            height: 80px;
+            line-height: 20px;
+        }
+        .logo {
+            position: absolute;
+            top: -10px; 
+            right: 10px; 
+            height: 80px; 
+        }
+        .title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 100px); 
+            gap: 50px;
+            justify-content: center;
+            height: 103.75px;
+        }
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 100px); 
+            gap: 10px;
+            justify-content: center;
+        }
+        /* Colors for different files */
+        .file1 { border-color: blue; }
+        .file2 { border-color: green; }
+        .file3 { border-color: orange; }
+        .file4 { border-color: purple; }
+        .file5 { border-color: red; }
+        /* Highlighting */
+        .highlight {
+            background-color: yellow;
+        }
+        /* Disabled state for backupFileGrid */
+        .disabled {
+            opacity: 0.5;
+        }
+        .file-content {
+            text-align: left;
+            white-space: pre-wrap;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #333;
+            background-color: #f4f4f4;
+            margin: 20px;
+            
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 style="text-align: center;">Festplatten Struktur Funktionsprinzip</h1>
+    <img src="../logo-itanderbar.png" alt="Logo" class="logo">
+</div>  
+<div class="menu">
+    <button class="fastformat-button" id="deleteFileButton" onclick="deleteFile()">Datei löschen</button>
+    <button class="fastformat-button" id="fastFormatButton" onclick="fastFormat()">Partition löschen/ Schnell-Format</button>
+    <button class="format-button" id="formatButton" onclick="toggleFormat()">Formatieren</button>
+    <button class="clear-button" id="wipeZeroButton" onclick="wipeData(0)">Wipe 0</button>
+    <button class="clear-button" id="wipeRandomButton" onclick="wipeData(1)">Wipe RND</button>
+</div>
+<div class="data" id="fat">
+    <div class="title">FAT (File Allocation Table) - Das Inhaltsverzeichnis</div>
+
+    <div class="file-grid" id="fileGrid">
+        <div class="file file1" onclick="highlightBlocks([4, 1, 7])">Datei 1<br>ein.txt<br>Blöcke:<br/>4 ➔ 1 ➔ 7</div>
+        <div class="file file2" id="delete-file" onclick="highlightBlocks([2, 5, 8])">Datei 2<br>bild.png<br>Blöcke:<br/>2 ➔ 5 ➔ 8</div>
+        <div class="file file3" onclick="highlightBlocks([9, 6, 3])">Datei 3<br>prg.exe<br>Blöcke:<br/>9 ➔ 3 ➔ 6</div>
+        <div class="file file4" onclick="highlightBlocks([10, 11, 13])">Datei 4<br>cv.docx<br>Blöcke:<br/>10 ➔ 11 ➔ 13</div>
+        <div class="file file5" onclick="highlightBlocks([12, 14, 15])">Datei 5<br>bild2.jpg<br>Blöcke:<br/>12 ➔ 14 ➔ 15</div>
+    </div>
+</div>
+<div class="data" id="backupFat">
+    <div class="title">Backup FAT (File Allocation Table) - Das Inhaltsverzeichnis</div>
+
+    <div class="file-grid disabled" id="backupFileGrid">
+        <div class="file file1" onclick="highlightBlocks([4, 1, 7])">Datei 1<br>ein.txt<br>Blöcke:<br/>4 ➔ 1 ➔ 7</div>
+        <div class="file file2" onclick="highlightBlocks([2, 5, 8])">Datei 2<br>bild.png<br>Blöcke:<br/>2 ➔ 5 ➔ 8</div>
+        <div class="file file3" onclick="highlightBlocks([9, 6, 3])">Datei 3<br>prg.exe<br>Blöcke:<br/>9 ➔ 3 ➔ 6</div>
+        <div class="file file4" onclick="highlightBlocks([10, 11, 13])">Datei 4<br>cv.docx<br>Blöcke:<br/>10 ➔ 11 ➔ 13</div>
+        <div class="file file5" onclick="highlightBlocks([12, 14, 15])">Datei 5<br>bild2.jpg<br>Blöcke:<br/>12 ➔ 14 ➔ 15</div>
+    </div>
+</div>
+<div class="data">
+    <div class="title">Blöcke - Die rohen Daten</div>
+    <div class="data-grid">
+        <div id="block-1" class="block file1" onclick="showFileContent('ein.txt')">Block 1<br>, Wo<br>.txt</div>
+        <div id="block-2" class="block file2" onclick="showFileContent('bild.png')">Block 2<br>Header<br>.png</div>
+        <div id="block-3" class="block file3" onclick="showFileContent('prg.exe')">Block 3<br>Binary<br>.exe</div>
+        <div id="block-4" class="block file1" onclick="showFileContent('ein.txt')">Block 4<br>Hello<br>.txt</div>
+        <div id="block-5" class="block file2" onclick="showFileContent('bild.png')">Block 5<br>Data<br>.png</div>
+        <div id="block-6" class="block file3" onclick="showFileContent('prg.exe')">Block 6<br>Binary<br>.exe</div>
+        <div id="block-7" class="block file1" onclick="showFileContent('ein.txt')">Block 7<br>rld!<br>.txt</div>
+        <div id="block-8" class="block file2" onclick="showFileContent('bild.png')">Block 8<br>Data<br>.png</div>
+        <div id="block-9" class="block file3" onclick="showFileContent('prg.exe')">Block 9<br>Header<br>.exe</div>
+        <div id="block-10" class="block file4" onclick="showFileContent('cv.docx')">Block 10<br>Content<br>.docx</div>
+        <div id="block-11" class="block file4" onclick="showFileContent('cv.docx')">Block 11<br>Content<br>.docx</div>
+        <div id="block-12" class="block file5" onclick="showFileContent('bild2.jpg')">Block 12<br>Header<br>.jpg</div>
+        <div id="block-13" class="block file4" onclick="showFileContent('cv.docx')">Block 13<br>Content<br>.docx</div>
+        <div id="block-14" class="block file5" onclick="showFileContent('bild2.jpg')">Block 14<br>Data<br>.jpg</div>
+        <div id="block-15" class="block file5" onclick="showFileContent('bild2.jpg')">Block 15<br>Data<br>.jpg</div>
+    </div>
+</div>
+<div class="data" id="fileConent">
+    <div class="title">Datei Inhalt</div>
+    <div class="file-content" style="display: flex; gap: 20px;">
+        <div class="file-hex" style="width: 50%;">
+            <strong>Hex-Darstellung:</strong>
+            <pre id="fileHexContent"></pre>
+        </div>
+        <div class="file-ascii" style="width: 50%;">
+            <strong>Lesbarer Inhalt:</strong>
+            <pre id="fileAsciiContent"></pre>
+        </div>
+    </div>
+</div>
+<script>
+    let isFormatted = false;
+    let isFastFormatted = false;
+    let blockIndex = 1; // Define blockIndex globally
+    let mainHighlightInterval;
+    const fileContents = {
+    'ein.txt': 'Hello, World!',
+    'bild.png': '\x89PNG\r\n\x1a\n\x00\x00\x00IHDR\x00\x00',
+    'prg.exe': 'MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff',
+    'cv.docx': '\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1\x00\x00\x00\x00',
+    'bild2.jpg': '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00'
+    };
+
+    // Funktion zur Anzeige des gesamten Datei-Inhalts als Hexdump
+    function showFileContent(fileType) {
+        const hexContainer = document.getElementById('fileHexContent');
+        const asciiContainer = document.getElementById('fileAsciiContent');
+        const content = fileContents[fileType] || '';
+
+        // Konvertiere den Inhalt in Hexadezimal und füge ihn zeilenweise hinzu
+        let hexContent = '';
+        let asciiContent = '';
+        for (let i = 0; i < content.length; i++) {
+            // Hexadezimale Darstellung
+            hexContent += content.charCodeAt(i).toString(16).padStart(2, '0') + ' ';
+            
+            // ASCII Darstellung, nicht druckbare Zeichen als '.'
+            const char = content[i];
+            asciiContent += (/[ -~]/.test(char) ? char : '.');
+
+        }
+
+        hexContainer.innerText = hexContent.toUpperCase();
+        asciiContainer.innerText = asciiContent;
+    }
+    function clearFats() {
+        document.getElementById('fat').style = 'display:none';
+        document.getElementById('backupFat').style = 'display:none';
+        document.getElementById('fileConent').style = 'display:none';
+    }
+
+    function clearFile() {
+        document.querySelectorAll('.file-grid .file').forEach(file => {
+            if (file.id=="delete-file")
+                file.innerHTML = '';
+        });
+    }
+
+    function restoreFile() {
+        blinkBackupFile(1, () => {
+                setTimeout(restoreFileFinal, 500); // Zeit zwischen den Dateien
+            });
+
+    }
+
+    function restoreFileFinal(){
+
+        document.querySelectorAll('.file-grid .file').forEach(file => {
+            if (file.id=="delete-file")
+                file.innerHTML = 'Datei 2<br>bild.png<br>Blöcke:<br>2 ➔ 5 ➔ 8';
+        });
+        const button = document.getElementById('deleteFileButton');
+        button.innerHTML = "Datei löschen";
+        button.onclick = deleteFile;
+    }
+
+    function clearFileGrid() {
+        document.getElementById('fileGrid').innerHTML = '';
+        document.querySelectorAll('.data .block').forEach(block => {
+            block.classList.remove('highlight');
+        });
+    }
+    function clearBackupFileGrid() {
+        document.getElementById('backupFileGrid').innerHTML = '';
+        document.querySelectorAll('.data .block').forEach(block => {
+            block.classList.remove('highlight');
+        });
+    }
+
+    function highlightBlocks(blockIds, timeToWait = 1000) {
+        document.querySelectorAll('.data .block').forEach(block => {
+            block.classList.remove('highlight');
+        });
+
+        const highlightBlock = (id, delay) => {
+            setTimeout(() => {
+                document.getElementById(`block-${id}`).classList.add('highlight');
+            }, delay);
+        };
+        
+        blockIds.forEach((id, index) => {
+            highlightBlock(id, index * timeToWait); 
+        });
+    }
+
+    function toggleFormat() {
+        const button = document.getElementById('formatButton');
+        if (!isFormatted) {
+            button.innerHTML = "Wiederherstellen";
+            clearFileGrid();
+            clearBackupFileGrid();
+            isFormatted = true;
+        } else {
+            button.innerHTML = "Wiederherstellen...";
+            restoreFiles(() => {
+                button.innerHTML = "Formatieren"; // Set back to "Formatieren" after completion
+                isFormatted = false;
+            });
+        }
+    }
+
+
+    function deleteFile() {
+        clearFile(); // Clear the fileGrid
+        //document.querySelector('.file-grid.disabled').classList.remove('disabled'); // Allow interaction
+        const button = document.getElementById('deleteFileButton');
+        button.innerHTML = "Wiederherstellen";
+        isFastFormatted = true;
+
+        button.onclick = restoreFile; // Assign the restore function to the button
+    }
+
+    function fastFormat() {
+        clearFileGrid(); // Clear the fileGrid
+        //document.querySelector('.file-grid.disabled').classList.remove('disabled'); // Allow interaction
+        const button = document.getElementById('fastFormatButton');
+        button.innerHTML = "Wiederherstellen";
+        isFastFormatted = true;
+
+        button.onclick = restoreFromBackup; // Assign the restore function to the button
+    }
+
+    function restoreFromBackup() {
+    const fileMappings = [
+        { file: `<div class="file file1">Datei 1<br>ein.txt<br>Blöcke:<br/>4 ➔ 1 ➔ 7</div>`, blocks: [4, 1, 7] },
+        { file: `<div class="file file2">Datei 2<br>bild.png<br>Blöcke:<br/>2 ➔ 5 ➔ 8</div>`, blocks: [2, 5, 8] },
+        { file: `<div class="file file3">Datei 3<br>prg.exe<br>Blöcke:<br/>9 ➔ 3 ➔ 6</div>`, blocks: [9, 3, 6] },
+        { file: `<div class="file file4">Datei 4<br>cv.docx<br>Blöcke:<br/>10 ➔ 11 ➔ 13</div>`, blocks: [10, 11, 13] },
+        { file: `<div class="file file5">Datei 5<br>bild2.jpg<br>Blöcke:<br/>12 ➔ 14 ➔ 15</div>`, blocks: [12, 14, 15] }
+    ];
+
+    let restoreIndex = 0;
+
+    function restoreNextFile() {
+        if (restoreIndex < fileMappings.length) {
+            // Blinken des Backup-FAT-Blocks für den aktuellen Dateieintrag
+            blinkBackupFile(restoreIndex, () => {
+                // Nach dem Blinken des Backup-FAT-Blocks den Eintrag ins Haupt-FAT hinzufügen
+                document.getElementById('fileGrid').innerHTML += fileMappings[restoreIndex].file;
+                restoreIndex++;
+                setTimeout(restoreNextFile, 500); // Zeit zwischen den Dateien
+            });
+        } else {
+            const button = document.getElementById('fastFormatButton');
+            button.innerHTML = "Partition löschen/ Schnell-Format";
+            button.onclick = fastFormat;
+            document.querySelector('.file-grid.disabled').classList.add('disabled'); // Backup-Grid deaktivieren
+        }
+    }
+
+    restoreNextFile();
+}
+
+// Funktion zum Blinken eines Dateieintrags im Backup-FAT und anschließendem Callback
+function blinkBackupFile(index, callback) {
+    const backupFileElement = document.querySelector(`#backupFileGrid .file:nth-child(${index + 1})`);
+    if (!backupFileElement) return;
+
+    let blinkCount = 0;
+    const blinkInterval = setInterval(() => {
+        backupFileElement.classList.toggle('highlight'); // Highlight hinzufügen/entfernen
+        blinkCount++;
+
+        if (blinkCount >= 4) { // Nach 3-mal Blinken (an/aus)
+            clearInterval(blinkInterval);
+            backupFileElement.classList.remove('highlight'); // Highlight entfernen
+            callback(); // Fahre mit der nächsten Datei fort
+        }
+    }, 350); // Intervallzeit für das Blinken
+}
+
+    function restoreFiles(callback) {
+        const fileMappings = [            
+            { file: `<div class="file file2">Datei 2<br>???.png<br>Blöcke:<br/>2 ➔ 5 ➔ 8</div>`, blocks: [2, 5, 8] },
+            { file: `<div class="file file3">Datei 3<br>???.exe<br>Blöcke:<br/>9 ➔ 3 ➔ 6</div>`, blocks: [9, 3, 6] },
+            { file: `<div class="file file4">Datei 4<br>???.doc<br>Blöcke:<br/>10 ➔ 11 ➔ 13</div>`, blocks: [10, 11, 13] },
+            { file: `<div class="file file5">Datei 5<br>???.jpg<br>Blöcke:<br/>12 ➔ 14 ➔ 15</div>`, blocks: [12, 14, 15] }
+        ];
+
+        mainHighlightInterval = setInterval(() => {
+            continueHighlight(fileMappings, callback);
+        }, 1000);
+        
+    }
+
+    function continueHighlight(fileMappings, callback) {
+        if (blockIndex > 15) {
+            clearInterval(mainHighlightInterval);
+            callback(); // Call the callback after the highlighting process is complete
+            return;
+        }
+
+        const currentBlock = document.getElementById(`block-${blockIndex}`);
+        if (currentBlock) {
+            currentBlock.classList.add('highlight');
+        }
+
+        fileMappings.forEach((file, index) => {
+            if (file.blocks.includes(blockIndex)) {
+                const allHighlighted = file.blocks.every(id => 
+                    document.getElementById(`block-${id}`).classList.contains('highlight')
+                );
+
+                if (allHighlighted) {
+                    clearInterval(mainHighlightInterval); // Pause main process
+
+                    blinkBlocks(file.blocks, () => {
+                        file.blocks.forEach(id => {
+                            document.getElementById(`block-${id}`).classList.remove('highlight');
+                        });
+                        document.getElementById('fileGrid').innerHTML += file.file;
+                        if (isFormatted)
+                            document.getElementById('backupFileGrid').innerHTML += file.file;
+
+                        fileMappings.splice(index, 1); // Remove the restored file from mappings
+
+                        mainHighlightInterval = setInterval(() => {
+                            continueHighlight(fileMappings, callback);
+                        }, 1000); // Resume main process
+                    });
+                }
+            }
+        });
+
+        blockIndex++;
+    }
+
+    function blinkBlocks(blockIds, callback) {
+        let blinkCount = 0;
+        const blinkInterval = setInterval(() => {
+            blockIds.forEach(id => {
+                const block = document.getElementById(`block-${id}`);
+                block.classList.toggle('highlight');
+            });
+            blinkCount++;
+
+            if (blinkCount >= 6) { // 3 times on/off = 6 toggles
+                clearInterval(blinkInterval);
+                callback(); // Call the callback after blinking
+            }
+        }, 500); // 500ms for each toggle, for a total of 3 on/off cycles
+    }
+
+    // Function to wipe data
+    function wipeData(type) {
+        // Clear file grids
+        clearFileGrid();
+        clearBackupFileGrid();
+        clearFats();
+        
+        let blockCount = 1;
+
+        const writeBlock = (blockId, zeroIndex) => {
+            if (zeroIndex < 6) {
+                setTimeout(() => {
+                    const block = document.getElementById(`block-${blockId}`);
+                    // Randomly generate 0 or 1 if type is RND
+                    const value = (type === 1) ? Math.floor(Math.random() * 2) : 0;
+                    // Update the block with the current zeros or random values
+                    const currentContent = block.innerHTML.includes("Data") ? block.innerHTML.split('Data')[1] : '';
+                    block.innerHTML += `${value}`;
+                    writeBlock(blockId, zeroIndex + 1); // Write the next value
+                }, 50); // Delay for 50ms
+            } else {
+                // Move to the next block after completing the current one
+                blockCount++;
+                if (blockCount <= 15) {
+                    const block = document.getElementById(`block-${blockCount}`);
+                    block.innerHTML = `Block ${blockCount}<br>`;
+                    writeBlock(blockCount, 0); // Move to the next block
+                }
+            }
+        };
+
+        const block = document.getElementById(`block-${blockCount}`);
+        block.innerHTML = `Block ${blockCount}<br>`;
+        writeBlock(blockCount, 0); // Move to the next block
+
+        // Reset formatted state
+        isFormatted = false;
+        isFastFormatted = false;
+        document.getElementById('formatButton').innerHTML = "Formatieren";
+        document.getElementById('fastFormatButton').innerHTML = "Partition löschen/ Schnell-Format";
+    }
+</script>
+</body>
+</html>
