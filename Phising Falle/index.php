@@ -1,4 +1,16 @@
 <?php
+
+function is_tor_exit_node($ip) {
+    // Umkehren der IP-Adresse (Tor DNSBL benötigt dies)
+    $reversed_ip = implode('.', array_reverse(explode('.', $ip)));
+
+    // Tor DNSBL Check (dnsbl.torproject.org)
+    $dns_query = $reversed_ip . ".dnsel.torproject.org";
+
+    // Prüfe, ob ein A-Record existiert
+    return checkdnsrr($dns_query, "A");
+}
+
     // Datei, in die die Daten gespeichert werden
     $logfile = '/var/www/html/client_data.txt';
 
@@ -18,29 +30,18 @@
     $log_data .= "Zugriffszeit: $access_time\n";
 
 
-if (isset($_GET['id']) && preg_match('/^[a-f0-9]{32}$/', $_GET['id'])) {
-    $log_data .= "Hash: {$_GET['id']}\n";
-}else{
-    $log_data .= "no hash provided!\n";
-    $log_data .= "----------------------------\n";
-
-    file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
-	die("2T-Videomarketing ERP - exception - please provide your order id");
-}
-
-
 $client_ip = $_SERVER['HTTP_X_REAL_IP'];
-
+// $client_ip = "185.220.101.27"; //tor test ip
 // URL der IP-API, um die Geolocation zu ermitteln
 $api_url = "http://ip-api.com/php/{$client_ip}";
 
 // Daten von der API abrufen
 $response = @file_get_contents($api_url);
-if ($response === FALSE) {
+if ($response === FALSE || is_tor_exit_node($client_ip)) {
     // Falls die API nicht erreichbar ist, blockiere den Zugriff vorsichtshalber
     header('HTTP/1.0 403 Forbidden');
     echo 'Access denied. Could not determine your location.';
-        $log_data .= "Access denied. This site is only available in the EU without VPN.\n";
+        $log_data .= "Access denied. This site is only available in the EU without TOR or VPN.\n";
         $log_data .= "----------------------------\n";
         file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
 
@@ -86,6 +87,18 @@ if ($data && $data['status'] == 'success') {
     exit();
 }
 
+
+if (isset($_GET['id']) && preg_match('/^[a-f0-9]{32}$/', $_GET['id'])) {
+    $log_data .= "Hash: {$_GET['id']}\n";
+}else{
+    $log_data .= "no hash provided!\n";
+    $log_data .= "----------------------------\n";
+
+    file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
+        die("2T-Videomarketing ERP - exception - please provide your order id");
+}
+
+
 if (isset($_REQUEST['checkin'])){
 	$rnd_nr = random_int(101, 9999);
 	$log_data .= "Check-In clicked: FM-2T-2024-$rnd_nr\n";
@@ -94,6 +107,18 @@ if (isset($_REQUEST['checkin'])){
 else{
 	$log_data .="Check-In not performed yet\n";
 	$order_id = "<font style=\"color:red;font-weight:bold\">Bitte Check-In Button bestätigen</font>";
+}
+
+
+if ($_REQUEST['id'] == '8b2dc4379dec24293f00173d43b5ba36' || $_REQUEST['id'] == '4a2dc4379dec24293f00173d43b5ba36' ){
+       $log_data .="ERP Order id expired, please request new one\n";
+       echo 'ERP Order id expired, please request new one';
+       $log_data .= "----------------------------\n";
+       file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
+
+       exit();
+
+
 }
    $log_data .= "----------------------------\n";
    file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
@@ -225,9 +250,9 @@ else{
                     <tr>
                         <td>2007</td>
                         <td>Nikon D780 Gehäuse Schwarz</td>
-                        <td>1</td>
+                        <td>2</td>
                         <td>1.200,00 €</td>
-                        <td>1.200,00 €</td>
+                        <td>2.400,00 €</td>
                     </tr>
                     <tr>
                         <td>2001</td>
@@ -245,7 +270,7 @@ else{
                     </tr>
                     <tr>
                         <td colspan="4" style="text-align: right; font-weight: bold;">Gesamtbetrag:</td>
-                        <td><strong>7.180,00 €</strong></td>
+                        <td><strong>8.380,00 €</strong></td>
                     </tr>
                 </tbody>
             </table>
