@@ -1,5 +1,4 @@
 <?php
-//var_dump($_SERVER);
     // Datei, in die die Daten gespeichert werden
     $logfile = '/var/www/html/client_data.txt';
 
@@ -12,6 +11,9 @@
 
     // Daten in die Datei schreiben
     $log_data = "IP-Adresse: $ip_address\n";
+    $log_data .= "Requested HOST: {$_SERVER['HTTP_HOST']}\n";
+    $log_data .= "Requested URI: {$_SERVER['REQUEST_URI']}\n";
+
     $log_data .= "User-Agent: $user_agent\n";
     $log_data .= "Zugriffszeit: $access_time\n";
 
@@ -19,6 +21,7 @@
 if (isset($_GET['id']) && preg_match('/^[a-f0-9]{32}$/', $_GET['id'])) {
     $log_data .= "Hash: {$_GET['id']}\n";
 }else{
+    $log_data .= "no hash provided!\n";
     $log_data .= "----------------------------\n";
 
     file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
@@ -37,6 +40,10 @@ if ($response === FALSE) {
     // Falls die API nicht erreichbar ist, blockiere den Zugriff vorsichtshalber
     header('HTTP/1.0 403 Forbidden');
     echo 'Access denied. Could not determine your location.';
+        $log_data .= "Access denied. This site is only available in the EU without VPN.\n";
+        $log_data .= "----------------------------\n";
+        file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
+
     exit();
 }
 
@@ -48,9 +55,6 @@ if ($data && $data['status'] == 'success') {
     $country_code = $data['countryCode'];  // Ländercode der IP-Adresse (ISO-3166 Alpha-2)
 
    $log_data .= "Country: $country_code\n";     
-   $log_data .= "----------------------------\n";
-   file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
-
 
     // Liste der EU-Länder nach ISO-3166 Alpha-2 Code
     $eu_countries = [
@@ -64,6 +68,10 @@ if ($data && $data['status'] == 'success') {
         // Wenn der Traffic nicht aus der EU kommt, blockiere den Zugriff
         header('HTTP/1.0 403 Forbidden');
         echo 'Access denied. This site is only available in the EU without VPN.';
+	$log_data .= "Access denied. This site is only available in the EU without VPN.\n";
+        $log_data .= "----------------------------\n";
+        file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
+
         exit();
     } else {
         // Besucher kommt aus der EU
@@ -78,6 +86,17 @@ if ($data && $data['status'] == 'success') {
     exit();
 }
 
+if (isset($_REQUEST['checkin'])){
+	$rnd_nr = random_int(101, 9999);
+	$log_data .= "Check-In clicked: FM-2T-2024-$rnd_nr\n";
+	$order_id = "FM-2T-2024-$rnd_nr <br/><b>Bitte auf Ihrem Lieferschein und Rechnung als Kundenbestellnummer angeben.</b>";
+}
+else{
+	$log_data .="Check-In not performed yet\n";
+	$order_id = "<font style=\"color:red;font-weight:bold\">Bitte Check-In Button bestätigen</font>";
+}
+   $log_data .= "----------------------------\n";
+   file_put_contents($logfile, $log_data, FILE_APPEND | LOCK_EX);
 
 
 ?>
@@ -169,8 +188,9 @@ if ($data && $data['status'] == 'success') {
     </header>
 
     <nav>
-        <a href="#">Lieferanten</a>
-        <button class="cta-button">Check-In</button>
+        <form method="POST" action="?id=<?php echo $_REQUEST['id'] ?>&checkin=true">
+            <button class="cta-button" type="submit">Check-In</button>
+        </form>
     </nav>
 
     <div class="container">
@@ -179,7 +199,7 @@ if ($data && $data['status'] == 'success') {
             <p><strong>Lieferant:</strong> Foto Mundus GmbH & Co. KG</p>
             <p><strong>Adresse:</strong> Döppers Kamp 4, 48531 Nordhorn</p>
             <p><strong>Inhaber:</strong> Lutz Bergknecht</p>
-            <p><strong>Lieferanten-Besteller-Nummer:</strong> <span id="supplier-order-number">FM-2T-2024-472</span></p>
+            <p><strong>Lieferanten-Besteller-Nummer:</strong> <span id="supplier-order-number"><?php echo $order_id ?></span></p>
         </div>
 
         <div class="order-info">
