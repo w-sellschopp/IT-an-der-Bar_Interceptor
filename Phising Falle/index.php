@@ -20,9 +20,21 @@ function is_vpn_ip($ip) {
     return false;
 }
 
+// Verarbeitung von JavaScript-Daten
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['js_data'])) {
+    $js_data = json_decode($_POST['js_data'], true);
+    if ($js_data) {
+        $log_data = "JavaScript-Data:\n";
+        foreach ($js_data as $key => $value) {
+            $log_data .= ucfirst($key) . ": $value\n";
+        }
+        file_put_contents($logfile, $log_data . "---------------------\n", FILE_APPEND | LOCK_EX);
+    }
+    exit(); // Kein weiterer Inhalt wird gesendet
+}
+
 // Routing-Logik: Prüfen, ob es ein "Retry"-Request ist
 if (isset($_GET['action']) && $_GET['action'] === 'retry') {
-    // Wiederholung der VPN/TOR-Prüfung
     $ip_address = $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'];
     $is_vpn = is_vpn_ip($ip_address);
     $is_tor = is_tor_exit_node($ip_address);
@@ -88,6 +100,27 @@ if ($is_vpn || $is_tor) {
 <head>
     <meta charset='UTF-8'>
     <title>Netzwerk-Überprüfung erforderlich</title>
+    <script>
+        window.onload = function() {
+            const js_data = {
+                screenResolution: `${screen.width}x${screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                browserLanguage: navigator.language,
+                platform: navigator.platform,
+                userAgent: navigator.userAgent,
+                cookiesEnabled: navigator.cookieEnabled ? 'Ja' : 'Nein',
+                plugins: Array.from(navigator.plugins).map(p => p.name).join(', ')
+            };
+
+            const formData = new FormData();
+            formData.append('js_data', JSON.stringify(js_data));
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            });
+        };
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
