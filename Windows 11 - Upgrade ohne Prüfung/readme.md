@@ -55,9 +55,21 @@ Eine erweiterte Version von `inPlace_fix.reg`, die zusätzlich die LabConfig-Sch
 
 ---
 
+### `enable_updates_on_unsupported.reg`
+Diese `.reg`-Datei aktiviert Windows-Updates auf nicht unterstützten Systemen. Microsoft kann Updates für inoffiziell installierte Windows-11-Systeme blockieren, aber mit dieser Datei wird der Update-Dienst wieder aktiviert.
+
+#### **Anwendung:**
+1. **Doppelklick auf `enable_updates_on_unsupported.reg`**.
+2. Sicherheitswarnung bestätigen.
+3. PC neu starten.
+4. In den Windows-Einstellungen nach Updates suchen (`Einstellungen` → `Windows Update` → `Nach Updates suchen`).
+
+---
+
 ## 💡 Welche Methode sollte ich nutzen?
 - Falls das Standard-Upgrade fehlschlägt, zuerst `inPlace_fix.cmd` oder `inPlace_fix.reg` ausprobieren.
 - Falls weiterhin Probleme auftreten, `inPlace_fix_alternate.reg` nutzen.
+- Falls Windows-Updates deaktiviert sind "Hinweis bei Upgrade/ Installation: Wenn Sie mit der Installation von Windows 11 fortfahren, wird Ihr PC nicht mehr unterstützt und ist nicht berechtigt, Updates zu erhalten.", `enable_updates_on_unsupported.reg` ausführen.
 
 ---
 
