@@ -167,9 +167,6 @@ EOF
   if [ "$SSH_RULE" == "public" ]; then
     echo "# SSH wird öffentlich freigegeben"
     echo "iptables -A INPUT -p tcp --dport 22 -j ACCEPT"
-  else
-    echo "# SSH wird nur für vertrauenswürdige Endpunkte freigegeben"
-    echo "iptables -A INPUT -p tcp --dport 22 -s $TRUSTED_ENDPOINTS -j ACCEPT"
   fi
 
   # Default-Drop: Alle weiteren Pakete verwerfen
@@ -183,14 +180,14 @@ echo "Die iptables-Regeln wurden in $RULES_FILE erstellt."
 
 # --- Systemd-Unit erstellen und aktivieren ---
 echo "Erstelle den systemd-Dienst /etc/systemd/system/iptables-rules.service ..."
-cat <<'EOF' > "$SYSTEMD_UNIT"
+cat <<EOF > "$SYSTEMD_UNIT"
 [Unit]
 Description=Iptables Firewall Rules
 After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/etc/iptables/rules
+ExecStart=${RULES_FILE}
 RemainAfterExit=yes
 
 [Install]
