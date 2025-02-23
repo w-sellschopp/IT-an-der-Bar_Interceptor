@@ -57,8 +57,11 @@ if [ -f "$SYSTEMD_UNIT" ]; then
         rm "$CRON_FILE"
         echo "Cronjob zum stündlichen Neustart wurde entfernt."
       fi
+      #Alle Regeln entfernen
       iptables -P INPUT ACCEPT
       iptables -F
+      ip6tables -P INPUT ACCEPT
+      ip6tables -F
       echo "Dienst wurde deaktiviert. Du kannst das Skript erneut ausführen, um die Regeln anzupassen."
       exit 0
       ;;
