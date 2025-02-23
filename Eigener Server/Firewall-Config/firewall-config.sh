@@ -120,10 +120,16 @@ iptables -P OUTPUT ACCEPT
 iptables -F OUTPUT
 
 # IPv6 komplett blockieren, related und lo erlauben
-ip6tables -P INPUT DROP
 ip6tables -F
+ip6tables -X
+ip6tables -Z
+ip6tables -P INPUT DROP
+ip6tables -P FORWARD DROP
+ip6tables -P OUTPUT ACCEPT
 ip6tables -A INPUT -i lo -j ACCEPT
-ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+ip6tables -A INPUT -p tcp --syn -j DROP
+ip6tables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+ip6tables -A INPUT -p ipv6-icmp -j ACCEPT
 
 # Standardregeln:
 # Loopback-Schnittstelle erlauben
