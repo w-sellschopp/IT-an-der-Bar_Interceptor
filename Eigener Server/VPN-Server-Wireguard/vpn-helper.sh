@@ -11,6 +11,15 @@ WG_IFACE="wg0"
 WG_CONF="/etc/wireguard/${WG_IFACE}.conf"
 CLIENTS_DIR="/etc/wireguard/clients"
 SERVER_KEYS_DIR="/etc/wireguard/keys"
+GLOBAL_CONF="/etc/wireguard/wg_manager.conf"
+
+# Default DNS: Quad9
+DEFAULT_DNS="9.9.9.9"
+
+# Falls vorhanden, globale Konfiguration laden (z.B. DNS_SERVER, PUBLIC_IP, LISTEN_PORT)
+if [ -f "$GLOBAL_CONF" ]; then
+    source "$GLOBAL_CONF"
+fi
 
 ##############################
 # Funktion: Abfrage für Ja/Nein (akzeptiert ja, j, yes, y bzw. nein, n, no)
@@ -161,14 +170,41 @@ basic_install() {
     fi
     echo "Der ListenPort wird auf ${LISTEN_PORT} gesetzt."
 
-    # DNS konfigurieren (Default: 1.1.1.1)
-    read -p "Bitte gib den DNS-Server ein (Default: 1.1.1.1): " input_dns
+    # DNS konfigurieren (Default: DEFAULT_DNS)
+    read -p "Bitte gib den DNS-Server ein (Default: ${DEFAULT_DNS}): " input_dns
     if [ -z "$input_dns" ]; then
-        DNS_SERVER="1.1.1.1"
+        DNS_SERVER="${DEFAULT_DNS}"
     else
         DNS_SERVER="$input_dns"
     fi
     echo "Der DNS-Server wird auf ${DNS_SERVER} gesetzt."
+
+    # Externe Adresse (IP oder DNS) abfragen
+    read -p "Bitte gib die externe IP oder den DNS-Namen ein (leer für automatische Ermittlung): " input_ext
+    if [ -n "$input_ext" ]; then
+        # Prüfen, ob es sich um eine IP handelt
+        if [[ "$input_ext" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Eingegebene externe Adresse wird als IP erkannt."
+            PUBLIC_IP="$input_ext"
+        else
+            echo "Eingegebene externe Adresse wird als DNS-Name interpretiert."
+            PUBLIC_IP="$input_ext"
+        fi
+    else
+        PUBLIC_IP=$(curl -4 -s ifconfig.me)
+        if [ -z "$PUBLIC_IP" ]; then
+            PUBLIC_IP=$(curl -4 -s https://ipv4.icanhazip.com)
+        fi
+        PUBLIC_IP=$(echo "$PUBLIC_IP" | tr -d '\n')
+    fi
+    echo "Die öffentliche Adresse/DNS lautet: ${PUBLIC_IP}"
+
+    # Persistiere die globalen Einstellungen (DNS, PUBLIC_IP und LISTEN_PORT)
+    {
+      echo "DNS_SERVER=${DNS_SERVER}"
+      echo "PUBLIC_IP=${PUBLIC_IP}"
+      echo "LISTEN_PORT=${LISTEN_PORT}"
+    } > "$GLOBAL_CONF"
 
     # Generieren der Server-Schlüssel
     umask 077
@@ -179,19 +215,6 @@ basic_install() {
         echo "Fehler: Der SERVER_PRIV_KEY ist leer. Die Schlüssel konnten nicht generiert werden."
         exit 1
     fi
-
-    # Externe IP oder DNS abfragen (falls du hinter einem Router sitzt)
-    read -p "Bitte gib die externe IP oder den DNS-Namen ein (leer für automatische Ermittlung): " EXTERNAL_IP
-    if [ -n "$EXTERNAL_IP" ]; then
-        PUBLIC_IP="$EXTERNAL_IP"
-    else
-        PUBLIC_IP=$(curl -4 -s ifconfig.me)
-        if [ -z "$PUBLIC_IP" ]; then
-            PUBLIC_IP=$(curl -4 -s https://ipv4.icanhazip.com)
-        fi
-        PUBLIC_IP=$(echo "$PUBLIC_IP" | tr -d '\n')
-    fi
-    echo "Die öffentliche Adresse/DNS lautet: ${PUBLIC_IP}"
 
     # Anlegen der Server-Konfiguration (nur Server, ohne Client-Abschnitte)
     cat <<EOF > "$WG_CONF"
@@ -225,6 +248,9 @@ add_client() {
         return
     fi
 
+    # Sicherstellen, dass ein DNS-Wert vorhanden ist (Default: DEFAULT_DNS)
+    DNS_SERVER=${DNS_SERVER:-${DEFAULT_DNS}}
+
     umask 077
     client_priv=$(wg genkey)
     client_pub=$(echo "$client_priv" | wg pubkey)
@@ -240,14 +266,19 @@ add_client() {
     # PSK für diese Verbindung generieren
     psk=$(wg genpsk)
 
-    # Zum Endpunkt: Den in der WG-Konfiguration hinterlegten Port auslesen
-    LISTEN_PORT=$(grep "^ListenPort" "$WG_CONF" | awk '{print $3}')
+    # Verwende den persistierten LISTEN_PORT, sonst aus der WG-Konfiguration
+    LISTEN_PORT=${LISTEN_PORT:-$(grep "^ListenPort" "$WG_CONF" | awk '{print $3}')}
 
-    public_ip=$(curl -4 -s ifconfig.me)
-    if [ -z "$public_ip" ]; then
-        public_ip=$(curl -4 -s https://ipv4.icanhazip.com)
+    # Verwende den persistierten PUBLIC_IP, falls vorhanden – sonst automatische Ermittlung
+    if [ -z "$PUBLIC_IP" ]; then
+        public_ip=$(curl -4 -s ifconfig.me)
+        if [ -z "$public_ip" ]; then
+            public_ip=$(curl -4 -s https://ipv4.icanhazip.com)
+        fi
+        public_ip=$(echo "$public_ip" | tr -d '\n')
+    else
+        public_ip="$PUBLIC_IP"
     fi
-    public_ip=$(echo "$public_ip" | tr -d '\n')
 
     # Erstelle die Client-Konfiguration (inklusive PSK und DNS)
     cat <<EOF > "$CLIENTS_DIR/${client_name}.conf"
@@ -317,6 +348,7 @@ remove_all_config() {
     wg-quick down ${WG_IFACE} 2>/dev/null
     rm -f "$WG_CONF"
     rm -rf "$CLIENTS_DIR"
+    rm -f "$GLOBAL_CONF"
     echo "Alle WireGuard-Konfigurationen wurden entfernt."
 }
 
@@ -337,8 +369,8 @@ if [ ! -f "$WG_CONF" ]; then
         basic_install
     else
         echo "Abbruch. Es wurde keine Installation vorgenommen."
+        exit 1
     fi
-    exit 0
 fi
 
 while true; do
