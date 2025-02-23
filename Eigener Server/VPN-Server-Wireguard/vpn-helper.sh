@@ -1,8 +1,16 @@
 #!/bin/bash
-echo "-------------------------------------------------------------"
-echo " ACHTUNG: Dieses Skript wird ohne jegliche Gewähr bereitgestellt."
-echo " Es wird keine Haftung für eventuelle Schäden oder Fehlkonfigurationen übernommen."
-echo "-------------------------------------------------------------"
+clear
+
+# Logo und Banner anzeigen
+if [ -f logo ]; then
+  cat logo
+else
+  echo "-------------------------------------------------------------"
+  echo " ACHTUNG: Dieses Skript wird ohne jegliche Gewähr bereitgestellt."
+  echo " Es wird keine Haftung für eventuelle Schäden oder Fehlkonfigurationen übernommen."
+  echo "-------------------------------------------------------------"
+fi
+
 
 ##############################
 # Globale Variablen
