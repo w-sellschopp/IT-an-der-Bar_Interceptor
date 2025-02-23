@@ -115,9 +115,11 @@ iptables -F FORWARD
 iptables -P OUTPUT ACCEPT
 iptables -F OUTPUT
 
-# IPv6 komplett blockieren
+# IPv6 komplett blockieren, related und lo erlauben
 ip6tables -P INPUT DROP
 ip6tables -F
+ip6tables -A INPUT -i lo -j ACCEPT
+ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 # Standardregeln:
 # Loopback-Schnittstelle erlauben
