@@ -52,6 +52,8 @@ if [ -f "$SYSTEMD_UNIT" ]; then
       systemctl stop iptables-rules.service || true
       rm "$SYSTEMD_UNIT"
       systemctl daemon-reload
+      iptables -P INPUT ACCEPT
+      iptables -F
       echo "Dienst wurde deaktiviert. Du kannst das Skript erneut ausführen, um die Regeln anzupassen."
       exit 0
       ;;
