@@ -64,7 +64,7 @@ echo "Bitte wählen Sie eine Option:"
 echo "1) Aktivieren (Alle Updates)"
 echo "2) Aktivieren (Nur Sicherheitsupdates)"
 echo "3) Deaktivieren"
-echo "4) Auto-Reboot toggeln (aktuell: $auto_reboot_status)"
+echo "4) Auto-Reboot ändern (aktuell: $auto_reboot_status)"
 echo ""
 read -p "Auswahl (1-4): " option
 
