@@ -17,6 +17,7 @@ FIREWALL_DIR="/etc/iptables"
 CONFIG_FILE="$FIREWALL_DIR/firewall.conf"
 RULES_FILE="$FIREWALL_DIR/rules"
 SYSTEMD_UNIT="/etc/systemd/system/iptables-rules.service"
+CRON_FILE="/etc/cron.d/iptables_rules_restart"
 
 # Sicherstellen, dass /etc/iptables existiert
 mkdir -p "$FIREWALL_DIR"
@@ -52,6 +53,10 @@ if [ -f "$SYSTEMD_UNIT" ]; then
       systemctl stop iptables-rules.service || true
       rm "$SYSTEMD_UNIT"
       systemctl daemon-reload
+      if [ -f "$CRON_FILE" ]; then
+        rm "$CRON_FILE"
+        echo "Cronjob zum stündlichen Neustart wurde entfernt."
+      fi
       iptables -P INPUT ACCEPT
       iptables -F
       echo "Dienst wurde deaktiviert. Du kannst das Skript erneut ausführen, um die Regeln anzupassen."
@@ -83,19 +88,15 @@ fi
 # 3. Zusätzliche öffentliche Ports (kommagetrennt)
 prompt PUBLIC_PORTS "Bitte gib zusätzliche öffentliche Ports zum Freigeben (kommagetrennt) ein"
 
-# 4. Ports, die ausschließlich für vertrauenswürdige Endpunkte freigegeben werden sollen
-prompt TRUSTED_ONLY_PORTS "Bitte gib Ports zum Freigeben nur für vertrauenswürdige Endpunkte (kommagetrennt) ein"
-
-# 5. SSH: öffentlich oder nur für vertrauenswürdige Endpunkte?
+# 4. SSH: öffentlich oder nur für vertrauenswürdige Endpunkte?
 prompt SSH_RULE "Soll SSH öffentlich freigegeben werden oder nur für vertrauenswürdige Endpunkte? (public/trusted)"
 
-# Persistente Speicherung der Konfiguration
+# Persistente Speicherung der Konfiguration (ohne TRUSTED_ONLY_PORTS)
 cat <<EOF > "$CONFIG_FILE"
 # Persistierte Firewall-Konfiguration
 TRUSTED_ENDPOINTS="$TRUSTED_ENDPOINTS"
 ALLOW_WG_UDP="$ALLOW_WG_UDP"
 PUBLIC_PORTS="$PUBLIC_PORTS"
-TRUSTED_ONLY_PORTS="$TRUSTED_ONLY_PORTS"
 SSH_RULE="$SSH_RULE"
 EOF
 
@@ -132,7 +133,7 @@ EOF
 # Dynamisch weitere Regeln einfügen
 {
   echo ""
-  echo "# Erlaube alle Verbindungen von den vertrauenswürdigen Endpunkten"
+  echo "# Erlaube alle Verbindungen von den vertrauenswürdigen Endpunkten (für alle Protokolle)"
   IFS=',' read -ra ADDR <<< "$TRUSTED_ENDPOINTS"
   for addr in "${ADDR[@]}"; do
     t=$(echo "$addr" | xargs)
@@ -155,18 +156,6 @@ EOF
       echo "# Öffentlicher Port $p"
       echo "iptables -A INPUT -p tcp --dport $p -j ACCEPT"
       echo "iptables -A INPUT -p udp --dport $p -j ACCEPT"
-    done
-  fi
-
-  # Ports, die nur für vertrauenswürdige Endpunkte freigegeben werden
-  if [ -n "$TRUSTED_ONLY_PORTS" ]; then
-    IFS=',' read -ra TONLY <<< "$TRUSTED_ONLY_PORTS"
-    for port in "${TONLY[@]}"; do
-      p=$(echo "$port" | xargs)
-      echo ""
-      echo "# Port $p nur für vertrauenswürdige Endpunkte"
-      echo "iptables -A INPUT -p tcp --dport $p -s $TRUSTED_ENDPOINTS -j ACCEPT"
-      echo "iptables -A INPUT -p udp --dport $p -s $TRUSTED_ENDPOINTS -j ACCEPT"
     done
   fi
 
@@ -211,5 +200,13 @@ systemctl enable iptables-rules.service
 systemctl restart iptables-rules.service
 
 echo "Der systemd-Dienst iptables-rules.service wurde erstellt und aktiviert."
-echo "Deine Firewall-Konfiguration ist abgeschlossen."
 
+# --- Cronjob erstellen, der den Dienst stündlich neu startet ---
+echo "Erstelle Cronjob zum stündlichen Neustart des Dienstes..."
+cat <<EOF > "$CRON_FILE"
+0 * * * * root systemctl restart iptables-rules.service
+EOF
+chmod 644 "$CRON_FILE"
+echo "Cronjob unter $CRON_FILE wurde erstellt."
+
+echo "Deine Firewall-Konfiguration ist abgeschlossen."
