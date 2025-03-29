@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenSSL Zertifikatsprozess – Visuelles Diagramm</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f3;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .row-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .row-2 {
+      grid-template-columns: repeat(2, 1fr);
+      margin-top: 3rem;
+    }
+
+    .box {
+      background: #fff;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+      position: relative;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    .box h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .ca::before {
+      content: "☁️";
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+    }
+
+    .web::before {
+      content: "🖥️";
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+    }
+
+    .mail::before {
+      content: "📧";
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+    }
+
+    .arrow {
+      text-align: center;
+      margin: 1rem 0;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    pre {
+      background: #222;
+      color: #0f0;
+      padding: 0.5rem;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      border-radius: 6px;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+    }
+
+    ul li {
+      margin-bottom: 0.4rem;
+    }
+
+    @media (max-width: 1000px) {
+      .row-3, .row-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 Der Zertifikatsprozess</h1>
+
+  <!-- Erste Zeile: Technische Akteure -->
+  <div class="grid row-3">
+    <div class="box web">
+      <h2>Webserver</h2>
+      <pre># Generiert Key
+openssl genrsa -out server.key 2048
+
+# Erstellt CSR
+openssl req -new -key server.key -out server.csr</pre>
+      <div class="arrow">➡️ CSR an CA</div>
+      <div class="arrow">⬅️ server.crt von CA</div>
+    </div>
+
+    <div class="box ca">
+      <h2>CA (Certificate Authority)</h2>
+      <pre># CA Key & Zertifikat
+openssl genrsa -out ca.key 4096
+openssl req -x509 -new -key ca.key -out ca.crt -days 3650</pre>
+
+      <pre># CSR signieren
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
+  -out server.crt -days 365</pre>
+
+      <pre># Benutzer-Zertifikat signieren
+openssl x509 -req -in user.csr -CA ca.crt -CAkey ca.key \
+  -out user.crt -days 365</pre>
+    </div>
+
+    <div class="box mail">
+      <h2>Mail-Client</h2>
+      <pre># Nutzer-Key
+openssl genrsa -out user.key 2048
+
+# CSR für E-Mail
+openssl req -new -key user.key -out user.csr</pre>
+      <div class="arrow">➡️ CSR an CA</div>
+      <div class="arrow">⬅️ user.crt von CA</div>
+    </div>
+  </div>
+<p>
+  <h1>ℹ️ Zusätzliche Infos</h1>
+</p>
+  <!-- Zweite Zeile: Info-Kästen -->
+  <div class="grid row-3">
+    <div class="box">
+      <h2>🔑 Public vs. Private Key</h2>
+      <ul>
+        <li><strong>Private Key:</strong> bleibt geheim</li>
+        <li><strong>Public Key:</strong> wird öffentlich verteilt</li>
+        <li>Private Key signiert, entschlüsselt</li>
+        <li>Public Key prüft Signatur, verschlüsselt</li>
+        <li>Mathematisch verknüpft, aber asymmetrisch</li>
+      </ul>
+    </div>
+
+    <div class="box">
+      <h2>🛡️ Was macht CA Zertifikate sicher</h2>
+      <ul>
+        <li>CA prüft Identität vor Signatur</li>
+        <li>Nur CA kann gültiges Zertifikat ausstellen</li>
+        <li>Signatur schützt vor Manipulation</li>
+        <li>Vertrauenskette über Root CAs</li>
+        <li>Widerruf möglich (CRL, OCSP)</li>
+      </ul>
+    </div>
+	<div class="box">
+	<h2>✉️ Wie funktionieren Signaturen vereinfacht?</h2>
+	<ul>
+	  <li>🔐 <strong>Siegelflasche:</strong> Du verschließt eine Nachricht mit deinem privaten Siegel – jeder kann es prüfen, aber nur du kannst es setzen.</li>
+	  <li>🖊️ <strong>Unterschrift:</strong> Deine digitale Unterschrift (Signatur) kann jeder mit deinem öffentlichen Schlüssel prüfen – aber nur du konntest sie erzeugen.</li>
+	  <li>✅ <strong>Fazit:</strong> Nur der Private Key kann signieren – aber jeder kann prüfen, ob es echt ist.</li>
+	</ul>
+	</div>
+   </div>
+
+</body>
+</html>
