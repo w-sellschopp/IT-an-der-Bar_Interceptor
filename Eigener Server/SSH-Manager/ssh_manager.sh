@@ -86,7 +86,7 @@ generate_keys() {
 
     echo "Generiere neues SSH Key-Paar mit Bezeichner '$keyinput'..."
     # Erzeuge das Key-Paar temporär in /tmp – Verwende Ed25519, -C setzt den Kommentar
-    ssh-keygen -t ed25519 -C "$key_comment" -f /tmp/${keyinput}_tmp_id_ed25519 -N ""
+    ssh-keygen -t ed25519 -C "$key_comment" -f /tmp/${keyinput}_tmp_id_ed25519
 
     echo "---------------------"
     echo "Private Key (sensible Information!):"
@@ -141,9 +141,9 @@ set_mode_password_pubkey() {
 # PasswordAuthentication wird auf no und PermitRootLogin auf prohibit-password gesetzt.
 set_mode_pubkey_only() {
     echo "Setze Authentifizierungsmodus: Nur Pubkey..."
-    if [ ! -f "$HOME/.ssh/id_ed25519.pub" ] && [ ! -f "$HOME/.ssh/id_ed25519" ]; then
-         echo "Kein Public Key gefunden. Bitte erst ein SSH Key-Paar generieren."
-         return
+    if [ ! -s "$HOME/.ssh/authorized_keys" ]; then
+        echo "Die authorized_keys-Datei ist leer oder existiert nicht. Vorgang wird abgebrochen."
+        return
     fi
     sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
     sudo sed -i -E 's/^[[:space:]]*#?[[:space:]]*PasswordAuthentication[[:space:]]+.*/PasswordAuthentication no/' /etc/ssh/sshd_config
