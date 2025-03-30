@@ -61,7 +61,7 @@ generate_keys() {
     # .ssh-Verzeichnis sicherstellen
     if [ ! -d "$HOME/.ssh" ]; then
          mkdir -p "$HOME/.ssh"
-         chmod 700 "$HOME/.ssh"
+         chmod 600 "$HOME/.ssh"
     fi
 
     # Standard: hostname_username_id_ed25519 und Kommentar: username@hostname
@@ -162,7 +162,7 @@ add_pubkey() {
     fi
     if [ ! -d "$HOME/.ssh" ]; then
          mkdir -p "$HOME/.ssh"
-         chmod 700 "$HOME/.ssh"
+         chmod 600 "$HOME/.ssh"
     fi
     if [ ! -f "$HOME/.ssh/authorized_keys" ]; then
          touch "$HOME/.ssh/authorized_keys"
@@ -184,7 +184,7 @@ remove_pubkey() {
     fi
     echo "Aktuelle Public Keys in authorized_keys:"
     nl -w2 -s') ' "$HOME/.ssh/authorized_keys"
-    read -p "Geben Sie die Nummer des zu entfernenden Schlüssels ein: " keynum
+    read -p "Geben Sie die Nummer des zu entfernenden Schlüssels ein (a für Abbruch): " keynum
     if ! [[ "$keynum" =~ ^[0-9]+$ ]]; then
          echo "Ungültige Eingabe."
          return
