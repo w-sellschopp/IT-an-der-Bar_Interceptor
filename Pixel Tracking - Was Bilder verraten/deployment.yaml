@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logo-tracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logo-tracker
+  template:
+    metadata:
+      labels:
+        app: logo-tracker
+    spec:
+      volumes:
+        - name: app-volume
+          emptyDir: {}
+      initContainers:
+        - name: init-downloader
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /app
+              curl -L -o /app/logo-itanderbar.png https://raw.githubusercontent.com/it-and-der-bar/YouTube/refs/heads/main/logo-itanderbar.png
+              curl -L -o /app/app.py "https://raw.githubusercontent.com/it-and-der-bar/YouTube/refs/heads/main/Pixel%20Tracking%20-%20Was%20Bilder%20verraten/app.py"
+          volumeMounts:
+            - name: app-volume
+              mountPath: /app
+      containers:
+        - name: python-server
+          image: python:3.11-slim
+          workingDir: /app
+          command:
+            - sh
+            - -c
+            - |
+              pip install fastapi uvicorn requests && uvicorn app:app --host 0.0.0.0 --port 80
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: app-volume
+              mountPath: /app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logo-tracker
+spec:
+  selector:
+    app: logo-tracker
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: logo-tracker-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ads.itanderbar.hkpig.de
+      secretName: logo-tracker-tls
+  rules:
+    - host: ads.itanderbar.hkpig.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: logo-tracker
+                port:
+                  number: 80

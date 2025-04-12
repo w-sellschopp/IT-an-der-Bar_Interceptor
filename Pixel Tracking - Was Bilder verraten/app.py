@@ -29,7 +29,12 @@ def reverse_dns_lookup(ip):
 @app.get("/")
 async def track_image(request: Request):
     headers = dict(request.headers)
-    ip = request.client.host
+
+    # Echte Client-IP über X-Real-IP oder X-Forwarded-For
+    ip = headers.get("x-real-ip") or headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if not ip:
+        ip = request.client.host  # Fallback
+
     geo = geoip_lookup(ip)
     reverse_dns = reverse_dns_lookup(ip)
 
