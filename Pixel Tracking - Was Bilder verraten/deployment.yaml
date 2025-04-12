@@ -36,7 +36,8 @@ spec:
             - sh
             - -c
             - |
-              pip install fastapi uvicorn requests && uvicorn app:app --host 0.0.0.0 --port 80
+              pip install --no-cache-dir fastapi uvicorn requests user-agents && \
+              uvicorn app:app --host 0.0.0.0 --port 80
           ports:
             - containerPort: 80
           volumeMounts:
@@ -60,6 +61,7 @@ metadata:
   name: logo-tracker-ingress
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx

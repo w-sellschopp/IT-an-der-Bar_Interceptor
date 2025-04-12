@@ -66,8 +66,8 @@ def pretty_print(data: dict):
     print(f"\n🔖 Tracking-ID:        {data.get('track_id')}")
     print("=" * 60 + "\n")
 
-@app.get("/")
-async def track_image(request: Request):
+# Tracking-Endpunkt (zentrale Logik)
+async def handle_tracking(request: Request):
     headers = dict(request.headers)
     query_params = dict(request.query_params)
 
@@ -115,10 +115,16 @@ async def track_image(request: Request):
         "track_id": track_id
     }
 
-    # Structured JSON log
     logging.info(json.dumps(log_data))
-
-    # Menschlich lesbare Ausgabe
     pretty_print(log_data)
 
     return FileResponse(LOGO_PATH, media_type="image/png")
+
+# Endpunkte
+@app.get("/")
+async def root(request: Request):
+    return await handle_tracking(request)
+
+@app.get("/logo.png")
+async def logo(request: Request):
+    return await handle_tracking(request)
