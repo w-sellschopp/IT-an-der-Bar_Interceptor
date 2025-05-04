@@ -30,7 +30,7 @@ ADMIN_TOKEN_b64=$(echo -n "$ADMIN_TOKEN" | base64)
 if [[ -f ingress.yml ]]; then
   sed -i \
     -e "s|#fqdn#|$fqdn|g" \
-    ingress.yaml
+    ingress.yml
   echo "-> ingress.yml aktualisiert"
 else
   echo "Fehler: ingress.yml nicht gefunden" >&2
