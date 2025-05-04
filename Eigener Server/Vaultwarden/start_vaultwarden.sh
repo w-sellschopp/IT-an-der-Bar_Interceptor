@@ -12,6 +12,9 @@ else
   echo "-------------------------------------------------------------"
 fi
 
+echo ""
+echo ""
+
 # Template- und Zieldateien
 ingress_template="ingress.yml.template"
 secrets_template="secrets.yml.template"
@@ -51,13 +54,6 @@ default_SMTP_SSL=$(default_value "$configmap_file" "SMTP_SSL:" 2)
 read -rp "FQDN [${default_fqdn:-none}]: " fqdn
 fqdn=${fqdn:-$default_fqdn}
 
-read -rp "E-Mail Benutzer [${default_emailUser:-none}]: " emailUser
-emailUser=${emailUser:-$default_emailUser}
-
-read -rsp "E-Mail Passwort [${default_emailPassword:+vorhanden}]: " emailPassword
-echo
-emailPassword=${emailPassword:-$default_emailPassword}
-
 read -rp "SMTP Host [${default_SMTP_HOST:-none}]: " SMTP_HOST
 SMTP_HOST=${SMTP_HOST:-$default_SMTP_HOST}
 
@@ -69,6 +65,13 @@ SMTP_PORT=${SMTP_PORT:-$default_SMTP_PORT}
 
 read -rp "SMTP SSL (true/false) [${default_SMTP_SSL:-none}]: " SMTP_SSL
 SMTP_SSL=${SMTP_SSL:-$default_SMTP_SSL}
+
+read -rp "E-Mail Benutzer [${default_emailUser:-none}]: " emailUser
+emailUser=${emailUser:-$default_emailUser}
+
+read -rsp "E-Mail Passwort [${default_emailPassword:+vorhanden}]: " emailPassword
+echo
+emailPassword=${emailPassword:-$default_emailPassword}
 
 # Admin-Token: nutze bestehenden oder generiere neu
 if [[ -n "$default_admin_token" ]]; then
