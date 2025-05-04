@@ -27,13 +27,13 @@ ADMIN_TOKEN_b64=$(echo -n "$ADMIN_TOKEN" | base64)
 # Platzhalter in bestehenden Dateien ersetzen (in-place)
 
 # ingress.yaml
-if [[ -f ingress.yaml ]]; then
+if [[ -f ingress.yml ]]; then
   sed -i \
     -e "s|#fqdn#|$fqdn|g" \
     ingress.yaml
-  echo "-> ingress.yaml aktualisiert"
+  echo "-> ingress.yml aktualisiert"
 else
-  echo "Fehler: ingress.yaml nicht gefunden" >&2
+  echo "Fehler: ingress.yml nicht gefunden" >&2
   exit 1
 fi
 
