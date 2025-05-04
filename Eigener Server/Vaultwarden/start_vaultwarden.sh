@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+clear
 set -euo pipefail
 
 # Logo und Banner anzeigen
@@ -126,13 +127,12 @@ fi
 
 echo "Fertig! Admin-Token: $ADMIN_TOKEN"
 
-
-echo "Starte Vaultwarden"
+echo "Wende Vaultwarden IaC an..."
 kubectl apply -f .
 
 echo "Starte Vaultwarden Pod neu"
 if kubectl get pod vaultwarden-0 -n vaultwarden &>/dev/null; then
   echo "Pod vaultwarden-0 gefunden, lösche..."
   kubectl delete pod vaultwarden-0 -n vaultwarden
-  echo "Pod vaultwarden-0 im Namespace vaultwarden wurde gelöscht"
+  echo "Pod vaultwarden-0 wurde neugestartet (gelöscht)"
 fi
