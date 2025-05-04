@@ -37,7 +37,7 @@ spec:
             - -c
             - |
               pip install --no-cache-dir fastapi uvicorn requests user-agents && \
-              uvicorn app:app --host 0.0.0.0 --port 80
+              uvicorn app:app --host 0.0.0.0 --port 80  --reload
           ports:
             - containerPort: 80
           volumeMounts:
