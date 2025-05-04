@@ -84,7 +84,7 @@ e_ADMIN_TOKEN=$(echo -n "$ADMIN_TOKEN" | base64)
 # Aus Templates generieren
 # ingress.yml
 out="$ingress_file"
-if [[ -f "$template" ]]; then
+if [[ -f "$ingress_template" ]]; then
   sed \
     -e "s|#fqdn#|$fqdn|g" \
     "$ingress_template" > "$out"
