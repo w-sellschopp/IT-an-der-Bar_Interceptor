@@ -21,7 +21,7 @@ data:
   DATA_FOLDER: '/data'
   # What domain is bitwarden going to be hosted on
   # This needs to reflect setting in ingress otherwise some 2FA methods might not work
-  DOMAIN: 'https://vaultwarden.itanderbar.hkpig.de'
+  DOMAIN: 'https://#fqdn#'
   # Number of workers to spin up for the service
   ROCKET_WORKERS: '10'
   # Show password hint instead of sending it via email
