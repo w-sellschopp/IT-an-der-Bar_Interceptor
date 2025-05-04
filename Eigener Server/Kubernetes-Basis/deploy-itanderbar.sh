@@ -36,7 +36,7 @@ spec:
     spec:
       initContainers:
         - name: fetch-logo
-          image: curlimages/curl
+          image: curlimages/curl:v1.2
           command: ["sh", "-c"]
           args:
             - |
