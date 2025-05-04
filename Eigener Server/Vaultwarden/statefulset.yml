@@ -1,0 +1,81 @@
+---
+apiVersion: "apps/v1"
+kind: StatefulSet
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+spec:
+  serviceName: vaultwarden
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vaultwarden
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+        networking/allow-internet-access: "true"
+    spec:
+      serviceAccountName: vaultwarden
+      securityContext:
+        fsGroup: 33
+        runAsUser: 33
+      containers:
+      - image: vaultwarden/server:latest
+        imagePullPolicy: Always
+        name: vaultwarden
+        envFrom:
+        - configMapRef:
+            name: vaultwarden
+        env:
+        - name: SMTP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: vaultwarden-secrets
+              key: emailUser
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vaultwarden-secrets
+              key: emailPassword
+        - name: SMTP_EXPLICIT_TLS
+          valueFrom:
+            configMapKeyRef:
+              name: vaultwarden
+              key: SMTP_EXPLICIT_TLS
+        - name: ADMIN_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: vaultwarden-secrets
+              key: ADMIN_TOKEN
+        - name: SIGNUPS_ALLOWED
+          valueFrom:
+            configMapKeyRef:
+              name: vaultwarden
+              key: SIGNUPS_ALLOWED
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 3012
+          name: websocket
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /data
+          name: vaultwarden-persistent-storage
+          subPath: data
+        resources:
+          limits:
+            cpu: 300m
+            memory: 1Gi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+      volumes:
+        - name: vaultwarden-persistent-storage
+          persistentVolumeClaim:
+            claimName: pv-claim
