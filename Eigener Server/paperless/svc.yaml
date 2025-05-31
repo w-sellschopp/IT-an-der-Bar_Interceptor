@@ -1,0 +1,42 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: paperless-web
+  namespace: paperless
+spec:
+  selector:
+    app: paperless
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: paperless
+  labels:
+    app: mariadb
+spec:
+  ports:
+    - name: db
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mariadb
+  type: ClusterIP
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: broker
+  namespace: paperless
+spec:
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: paperless
+  labels:
+    app: mariadb
+spec:
+  selector:
+    matchLabels:
+      app: mariadb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+      - image: mariadb:10.5
+        name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: cm-mysql
+              key: mariadb_pass_sys
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: paperless
+          mountPath: /var/lib/mysql
+          subPath: db
+      volumes:
+      - name: paperless
+        persistentVolumeClaim:
+          claimName: paperless

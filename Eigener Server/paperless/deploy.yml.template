@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless
+  namespace: paperless
+  labels:
+    app: paperless
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paperless
+  template:
+    metadata:
+      labels:
+        app: paperless
+    spec:
+      containers:
+        - name: webserver
+          image: paperlessngx/paperless-ngx
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PAPERLESS_CONSUMER_POLLING
+              value: "30"
+            - name: PAPERLESS_CONSUMER_POLLING_DELAY
+              value: "15"
+            - name: PAPERLESS_CONSUMER_POLLING_RETRY_COUNT
+              value: "100"
+            - name: PAPERLESS_URL
+              value: "https://#fqdn#"
+            - name: PAPERLESS_OCR_LANGUAGE
+              value: "deu"
+            - name: PAPERLESS_REDIS
+              value: "redis://broker:6379"
+            - name: PAPERLESS_WEB_PORT
+              value: "8000"
+            - name: PAPERLESS_PORT
+              value: "8000"
+            - name: PAPERLESS_DBENGINE
+              value: "mariadb"
+            - name: PAPERLESS_DBHOST
+              value: "mariadb"
+            - name: PAPERLESS_DBUSER
+              value: "root"
+            - name: PAPERLESS_DBPASS
+              valueFrom:
+                configMapKeyRef:
+                  name: cm-mysql
+                  key: mariadb_pass_sys
+          volumeMounts:
+            - name: paperless
+              mountPath: /usr/src/paperless/data
+              subPath: data
+            - name: paperless
+              mountPath: /usr/src/paperless/media
+              subPath: media
+      volumes:
+        - name: paperless
+          persistentVolumeClaim:
+            claimName: paperless
