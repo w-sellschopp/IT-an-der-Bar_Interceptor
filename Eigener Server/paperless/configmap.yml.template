@@ -4,4 +4,4 @@ metadata:
   name: cm-mysql
   namespace: paperless
 data:
-  mariadb_pass_sys: "#MARIA_PASS#"
+  mariadb_pass_sys: #MARIA_PASS#
