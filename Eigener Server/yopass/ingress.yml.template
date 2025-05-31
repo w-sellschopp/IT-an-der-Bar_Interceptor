@@ -4,9 +4,10 @@ metadata:
   name: yopass-ingress
   namespace: yopass
   annotations:
-    spec.ingressClassName: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod    
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
 spec:
+  ingressClassName: nginx
   tls:
   - hosts:
     - #fqdn#

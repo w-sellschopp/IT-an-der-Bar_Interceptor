@@ -6,7 +6,7 @@ metadata:
   labels:
     app: paperless
   annotations:
-    spec.ingressClassName: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod    
     nginx.ingress.kubernetes.io/connection-proxy-header: "keep-alive"
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
@@ -14,6 +14,7 @@ metadata:
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_intercept_errors off;
 spec:
+  ingressClassName: nginx
   tls:
     - hosts:
         - #fqdn#
