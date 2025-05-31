@@ -25,6 +25,8 @@ spec:
             configMapKeyRef:
               name: cm-mysql
               key: mariadb_pass_sys
+        - name: MYSQL_DATABASE
+          value: paperless              
         ports:
         - containerPort: 3306
           name: mysql
