@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 clear
 
 # Logo und Banner anzeigen
@@ -11,138 +12,167 @@ else
   echo "-------------------------------------------------------------"
 fi
 
-set -e
-
-# Ask user for configuration
-read -p "SSID für WLAN (default: InterceptorAP): " SSID
+# ── Abfrage der Konfiguration ────────────────────────────────
+read -rp "SSID für WLAN (default: InterceptorAP): " SSID
 SSID=${SSID:-InterceptorAP}
 
-read -p "Passwort für WLAN (min. 8 Zeichen, default: geheim123): " WLAN_PASS
+read -rp "Passwort für WLAN (min. 8 Zeichen, default: geheim123): " WLAN_PASS
 WLAN_PASS=${WLAN_PASS:-geheim123}
 
-read -p "WLAN-Land (2 Buchstaben, z.B. DE): " WLAN_COUNTRY
-WLAN_COUNTRY=${WLAN_COUNTRY:-DE}
-
-read -p "Netzwerkbasis für WLAN-Clients (nur /24, z.B. 10.3.7.0): " WLAN_BASE
-WLAN_BASE=${WLAN_BASE:-10.3.7.0}
-
-# Validate /24 network input
-if [[ ! $WLAN_BASE =~ ^([0-9]{1,3}\.){3}0$ ]]; then
-  echo "Ungültiger Netzwerkbereich. Bitte im Format z.B. 10.3.7.0 angeben (nur /24 erlaubt)."
+if [ "${#WLAN_PASS}" -lt 8 ]; then
+  echo "Passwort muss mind. 8 Zeichen haben."
   exit 1
 fi
 
-WLAN_NET="$WLAN_BASE/24"
+read -rp "WLAN-Land (2 Buchstaben, z.B. DE): " WLAN_COUNTRY
+WLAN_COUNTRY=${WLAN_COUNTRY:-DE}
 
-# Derived values
+if ! [[ "$WLAN_COUNTRY" =~ ^[A-Z]{2}$ ]]; then
+  echo "Ungültiger Ländercode. Beispiel: DE"
+  exit 1
+fi
+
+read -rp "Netzwerkbasis für WLAN-Clients (nur /24, z.B. 10.3.7.0): " WLAN_BASE
+WLAN_BASE=${WLAN_BASE:-10.3.7.0}
+
+# /24-Validierung
+if [[ ! $WLAN_BASE =~ ^([0-9]{1,3}\.){3}0$ ]]; then
+  echo "Ungültiger Netzwerkbereich. Format z.B. 10.3.7.0 (nur /24 erlaubt)."
+  exit 1
+fi
+
+# ── Abgeleitete Werte ────────────────────────────────────────
 WLAN_IFACE=wlan0
 ETH_IFACE=eth0
+WLAN_NET="$WLAN_BASE/24"
 WLAN_IP=${WLAN_BASE%0}1
 DHCP_RANGE_START=${WLAN_BASE%0}100
 DHCP_RANGE_END=${WLAN_BASE%0}200
 
-# Unblock WLAN if soft blocked and make it persistent
-rfkill unblock wifi || true
-# Make persistent via systemd service
-cat > /etc/systemd/system/unblock-wifi.service <<EOF
+# Datei für Environment (für systemd-Units nutzbar)
+ENV_FILE="/etc/default/wlan-ap.env"
+echo "WLAN_COUNTRY=$WLAN_COUNTRY" > "$ENV_FILE"
+
+# ── Pakete ───────────────────────────────────────────────────
+apt update
+DEBIAN_FRONTEND=noninteractive apt install -y \
+  hostapd dnsmasq iptables-persistent netfilter-persistent dhcpcd5 \
+  python3-pip libffi-dev libssl-dev
+
+pip3 install --break-system-packages --upgrade mitmproxy
+
+# hostapd evtl. entmaskieren
+systemctl unmask hostapd || true
+
+# ── WLAN-Entsperrung sehr früh im Boot ───────────────────────
+cat >/etc/systemd/system/unblock-wifi.service <<'EOF'
 [Unit]
 Description=Unblock WiFi on boot
-After=network.target
+DefaultDependencies=no
+Before=network-pre.target
+Wants=network-pre.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/sbin/rfkill unblock wifi
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target
 EOF
 
-systemctl daemon-reexec
+systemctl daemon-reload
 systemctl enable unblock-wifi.service
 
-# Update + install packages
-apt update
-apt install -y hostapd dnsmasq iptables-persistent python3-pip libffi-dev libssl-dev netfilter-persistent dhcpcd5
-pip3 install --break-system-packages --upgrade mitmproxy
-
-# Unmask hostapd if needed
-systemctl unmask hostapd
-
-# Wait for unblock-wifi service before starting hostapd
+# ── hostapd-Startreihenfolge + Regdom aus ENV ────────────────
 mkdir -p /etc/systemd/system/hostapd.service.d
-cat > /etc/systemd/system/hostapd.service.d/wait-for-unblock.conf <<EOF
+cat >/etc/systemd/system/hostapd.service.d/override.conf <<'EOF'
 [Unit]
-After=unblock-wifi.service
-Requires=unblock-wifi.service
+After=network-online.target sys-subsystem-net-devices-${WLAN_IFACE}.device dhcpcd.service
+Wants=network-online.target dhcpcd.service
+ConditionPathExists=/sys/class/net/wlan0
+
+[Service]
+EnvironmentFile=-/etc/default/wlan-ap.env
+# Sicherstellen, dass nichts blockiert und das IF up ist
+ExecStartPre=/usr/sbin/rfkill unblock wifi
+ExecStartPre=/sbin/ip link set wlan0 up
+# WICHTIG: Variablenexpansion erzwingen über /bin/sh -c
+ExecStartPre=/bin/sh -c '/sbin/iw reg set "${WLAN_COUNTRY:-DE}"'
+Restart=on-failure
+RestartSec=1s
 EOF
 
-systemctl daemon-reexec
+systemctl daemon-reload
 
-# Stop services to configure
+# ── Dienste stoppen (für Neu-Konfig) ─────────────────────────
 systemctl stop hostapd || true
 systemctl stop dnsmasq || true
 
-# Configure dhcpcd for wlan0 with static IP
-cat > /etc/dhcpcd.conf <<EOF
-interface $WLAN_IFACE
-static ip_address=$WLAN_IP/24
+# ── dhcpcd: statische IP für wlan0 ───────────────────────────
+# (überschreibt bewusst, Backup anlegen)
+if [ -f /etc/dhcpcd.conf ]; then cp /etc/dhcpcd.conf /etc/dhcpcd.conf.bak.$(date +%s); fi
+cat >/etc/dhcpcd.conf <<EOF
+interface ${WLAN_IFACE}
+static ip_address=${WLAN_IP}/24
 nohook wpa_supplicant
 EOF
 
 systemctl enable dhcpcd
 systemctl restart dhcpcd
 
-
-# Configure dnsmasq
-cat > /etc/dnsmasq.conf <<EOF
-interface=$WLAN_IFACE
-dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,255.255.255.0,24h
+# ── dnsmasq konfigurieren ────────────────────────────────────
+if [ -f /etc/dnsmasq.conf ]; then cp /etc/dnsmasq.conf /etc/dnsmasq.conf.bak.$(date +%s); fi
+cat >/etc/dnsmasq.conf <<EOF
+interface=${WLAN_IFACE}
+dhcp-range=${DHCP_RANGE_START},${DHCP_RANGE_END},255.255.255.0,24h
+domain-needed
+bogus-priv
 EOF
 
-# Configure hostapd
-cat > /etc/hostapd/hostapd.conf <<EOF
-interface=$WLAN_IFACE
+# ── hostapd konfigurieren ────────────────────────────────────
+mkdir -p /etc/hostapd
+cat >/etc/hostapd/hostapd.conf <<EOF
+interface=${WLAN_IFACE}
 driver=nl80211
-ssid=$SSID
+ssid=${SSID}
 hw_mode=g
 channel=7
 wmm_enabled=0
 auth_algs=1
 wpa=2
-wpa_passphrase=$WLAN_PASS
+wpa_passphrase=${WLAN_PASS}
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
-country_code=$WLAN_COUNTRY
+country_code=${WLAN_COUNTRY}
+ieee80211d=1
+ieee80211n=1
 EOF
 
-echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' > /etc/default/hostapd
+echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' >/etc/default/hostapd
 
-# Enable IP forwarding
-sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+# ── IP-Forwarding aktivieren ─────────────────────────────────
+if grep -q "^#\?net.ipv4.ip_forward" /etc/sysctl.conf; then
+  sed -i 's/^#\?net.ipv4.ip_forward=.*/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+else
+  echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+fi
 sysctl -p
 
-# Set iptables rules
-iptables -t nat -A POSTROUTING -o $ETH_IFACE -j MASQUERADE
-iptables -t nat -A PREROUTING -i $WLAN_IFACE -p tcp --dport 80 -j REDIRECT --to-port 8080
-iptables -t nat -A PREROUTING -i $WLAN_IFACE -p tcp --dport 443 -j REDIRECT --to-port 8080
+# ── NAT + transparente Redirects für mitmproxy ──────────────
+iptables -t nat -A POSTROUTING -o ${ETH_IFACE} -j MASQUERADE
+iptables -t nat -A PREROUTING -i ${WLAN_IFACE} -p tcp --dport 80  -j REDIRECT --to-port 8080
+iptables -t nat -A PREROUTING -i ${WLAN_IFACE} -p tcp --dport 443 -j REDIRECT --to-port 8080
 netfilter-persistent save
 
-# Set default DNS
-echo "nameserver 9.9.9.9" > /etc/resolv.conf
+# ── DNS (optional) ───────────────────────────────────────────
+echo "nameserver 9.9.9.9" > /etc/resolv.conf || true
 
-# Enable and start services
-systemctl enable hostapd
-systemctl enable dnsmasq
-systemctl start hostapd
-systemctl start dnsmasq
-
-# Create mitmproxy user
-useradd --system --no-create-home --group nogroup mitm || true
+# ── mitmweb: Systemnutzer + Service ──────────────────────────
+id -u mitm >/dev/null 2>&1 || useradd --system --no-create-home --group nogroup mitm
 mkdir -p /var/lib/mitmproxy
 chown -R mitm:nogroup /var/lib/mitmproxy
 
-# Setup mitmweb systemd service
-cat > /etc/systemd/system/mitmweb.service <<EOF
+cat >/etc/systemd/system/mitmweb.service <<'EOF'
 [Unit]
 Description=Transparent MITMWeb Proxy
 After=network.target
@@ -153,7 +183,7 @@ ExecStart=/usr/local/bin/mitmweb \
   --showhost \
   --web-port 8081 \
   --listen-host 0.0.0.0 --web-host 0.0.0.0 \
-    --ssl-insecure \
+  --ssl-insecure \
   --set confdir=/var/lib/mitmproxy
 User=mitm
 Group=nogroup
@@ -163,10 +193,28 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reexec
+# ── Dienste aktivieren & starten ─────────────────────────────
+systemctl daemon-reload
+systemctl enable hostapd
+systemctl enable dnsmasq
 systemctl enable mitmweb.service
+systemctl start hostapd
+systemctl start dnsmasq
 systemctl start mitmweb.service
 
-# Final message
-echo "WLAN-SSID: $SSID | Netzwerk: $WLAN_NET"
-echo "mitmweb erreichbar unter: http://$(ip -4 addr show $ETH_IFACE | grep -oP '(?<=inet\s)\d+(\.\d+){3}'):8081"
+# ── Abschluss ────────────────────────────────────────────────
+AP_IP_ETH=$(ip -4 addr show ${ETH_IFACE} | awk '/inet /{print $2}' | cut -d/ -f1 | head -n1 || true)
+echo
+echo "WLAN-SSID: ${SSID} | Netzwerk: ${WLAN_NET}"
+echo "AP-IP (wlan0): ${WLAN_IP}"
+echo "mitmweb:       http://${AP_IP_ETH:-<deine-LAN-IP>}:8081"
+
+
+AP_IP_ETH=$(ip -4 addr show ${ETH_IFACE} | awk '/inet /{print $2}' | cut -d/ -f1 | head -n1 || true)
+
+echo
+echo "WLAN-SSID: ${SSID} | Netzwerk: ${WLAN_NET}"
+echo "AP-IP (wlan0): ${WLAN_IP}"
+echo "LAN-IP (${ETH_IFACE}): ${AP_IP_ETH:-<nicht verbunden>}"
+echo "mitmweb erreichbar unter: http://${AP_IP_ETH:-<deine-LAN-IP>}:8081"
+echo "mitmproxy CA-Zertifikat:  /var/lib/mitmproxy/mitmproxy-ca-cert.pem"
