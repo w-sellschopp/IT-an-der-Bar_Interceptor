@@ -13,10 +13,10 @@ fi
 read -p "SSID für den Access Point [AP_SSID]: " AP_SSID
 AP_SSID=${AP_SSID:-AP_SSID}
 
-read -p "IP-Adresse für den AP (z.B. 192.168.4.1) [192.168.4.1]: " AP_IP
+read -p "IP-Adresse für den AP (z.B. 192.168.4.1): " AP_IP
 AP_IP=${AP_IP:-192.168.4.1}
 
-read -p "IP-Range für DHCP (z.B. 192.168.4.2,192.168.4.20) [192.168.4.2,192.168.4.20]: " DHCP_RANGE
+read -p "IP-Range für DHCP (z.B. 192.168.4.2,192.168.4.20,192.168.4.2,192.168.4.100): " DHCP_RANGE
 DHCP_RANGE=${DHCP_RANGE:-192.168.4.2,192.168.4.100}
 
 read -p "Ländercode für WLAN (z.B. DE für Deutschland) [DE]: " COUNTRY_CODE
