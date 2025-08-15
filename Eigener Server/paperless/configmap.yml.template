@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: cm-mysql
-  namespace: paperless
-data:
-  mariadb_pass_sys: #MARIA_PASS#
