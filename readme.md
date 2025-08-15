@@ -1,26 +1,7 @@
-# IT an der bar - Unser GitHub Repository
+# IT an der bar - Interceptor fork
 
-Willkommen im offiziellen GitHub-Repository des YouTube-Kanals **IT an der Bar**!
+Fork von der Seite https://github.com/it-and-der-bar/YouTube
 
-In diesem Repository findest du alles, was im Zusammenhang mit unseren Videos und Projekten auf ITanderbar anfällt: Skripte, Code-Snippets, Notizen und mehr! Unser Ziel ist es, nützliches Wissen und hilfreiche Ressourcen rund um die Welt der IT, Programmierung und Technik zu teilen.
+## Neu
 
----
-
-## Inhalte
-
-### 📜 Skripte
-Hier teilen wir Skripte, die in unseren Videos verwendet werden. Sie können als Ausgangspunkt für eigene Projekte genutzt oder direkt ausprobiert werden.
-
-### 💻 Code
-Alle Beispiele und Code-Snippets, die in den Videos gezeigt werden, sowie zusätzliche, weiterführende Projekte.
-
-### 📝 Notizen
-Kurze Erklärungen, Tipps und hilfreiche Notizen rund um die Themen aus unseren Videos. Ideal für eine schnelle Referenz oder als Begleitmaterial zu den Tutorials.
-
----
-
-## Wie du dieses Repository nutzen kannst
-
-1. **Klonen**: Lade das Repository auf deinen Rechner herunter, um die Dateien offline nutzen zu können.
-   ```bash
-   git clone https://github.com/it-and-der-bar/YouTube.git
+Meine Ergänzungen zum interceptor Script
