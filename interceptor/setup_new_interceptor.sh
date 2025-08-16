@@ -58,15 +58,95 @@ done
 # read -p "SSID für den Access Point [AP_SSID]: " AP_SSID
 # AP_SSID=${AP_SSID:-AP_SSID}
 
-read -p "IP-Adresse für den AP (z.B. 192.168.4.1): " AP_IP
-AP_IP=${AP_IP:-192.168.4.1}
+# --- 2) AP IP (als Basis für Netzwerkteil) ---
+while true; do
+  AP_IP=$(prompt_with_default "IP-Adresse für den AP (z.B. 192.168.4.1)" "192.168.4.1")
+  if valid_ipv4 "$AP_IP"; then
+    break
+  else
+    echo "Ungültige IPv4-Adresse: $AP_IP. Bitte im Format x.x.x.x (0-255) eingeben."
+  fi
+done
 
-read -p "IP-Range für DHCP (z.B. 192.168.4.2,192.168.4.20,192.168.4.2,192.168.4.100): " DHCP_RANGE
-DHCP_RANGE=${DHCP_RANGE:-192.168.4.2,192.168.4.100}
+# Netzwerkteil aus AP-IP extrahieren (erste drei Oktette)
+NET_PREFIX="${AP_IP%.*}"        # z.B. "192.168.4"
+NET_PREFIX_DOTTED="${NET_PREFIX}."  # "192.168.4."
 
-read -p "Ländercode für WLAN (z.B. DE für Deutschland) [DE]: " COUNTRY_CODE
-COUNTRY_CODE=${COUNTRY_CODE:-DE}
+# read -p "IP-Adresse für den AP (z.B. 192.168.4.1): " AP_IP
+# AP_IP=${AP_IP:-192.168.4.1}
 
+
+# --- 3) DHCP Range: nur letzte Oktette abfragen ---
+while true; do
+  read -r -p "Anfangs-Host für DHCP (nur letzte Oktette, z.B. 2) [2]: " DHCP_START
+  DHCP_START=${DHCP_START:-2}
+  if ! [[ $DHCP_START =~ ^[0-9]+$ ]]; then
+    echo "Bitte eine Zahl eingeben."
+    continue
+  fi
+  if (( DHCP_START < 1 || DHCP_START > 254 )); then
+    echo "Host muss zwischen 1 und 254 liegen."
+    continue
+  fi
+
+  read -r -p "End-Host für DHCP (nur letzte Oktette, z.B. 100) [100]: " DHCP_END
+  DHCP_END=${DHCP_END:-100}
+  if ! [[ $DHCP_END =~ ^[0-9]+$ ]]; then
+    echo "Bitte eine Zahl eingeben."
+    continue
+  fi
+  if (( DHCP_END < 1 || DHCP_END > 254 )); then
+    echo "Host muss zwischen 1 und 254 liegen."
+    continue
+  fi
+
+  if (( DHCP_START > DHCP_END )); then
+    echo "Start-Host darf nicht größer als End-Host sein."
+    continue
+  fi
+
+  # prüfen, ob AP-IP innerhalb der Range liegt
+  AP_HOST=${AP_IP##*.}
+  conflict=false
+  if (( DHCP_START <= AP_HOST && AP_HOST <= DHCP_END )); then
+    echo "Warnung: AP-IP ($AP_IP) liegt in der gewählten DHCP-Range."
+    conflict=true
+  fi
+
+  if $conflict; then
+    echo "Bitte wähle eine Range, die den AP nicht einschließt, oder bestätige."
+    read -r -p "Trotzdem verwenden? (j/N) " yn
+    yn=${yn:-N}
+    if [[ $yn =~ ^[jJ] ]]; then
+      break
+    else
+      echo "Range neu eingeben."
+      continue
+    fi
+  else
+    break
+  fi
+done
+
+# DHCP_RANGE zusammensetzen
+DHCP_RANGE="${NET_PREFIX_DOTTED}${DHCP_START},${NET_PREFIX_DOTTED}${DHCP_END}"
+# read -p "IP-Range für DHCP (z.B. 192.168.4.2,192.168.4.20,192.168.4.2,192.168.4.100): " DHCP_RANGE
+# DHCP_RANGE=${DHCP_RANGE:-192.168.4.2,192.168.4.100}
+
+# --- 4) Country code ---
+while true; do
+  COUNTRY_CODE=$(prompt_with_default "Ländercode für WLAN (z.B. DE für Deutschland)" "DE")
+  if valid_country_code "$COUNTRY_CODE"; then
+    COUNTRY_CODE=$(echo "$COUNTRY_CODE" | tr '[:lower:]' '[:upper:]')
+    break
+  else
+    echo "Ungültiger Ländercode. Bitte genau 2 Buchstaben eingeben (z.B. DE)."
+  fi
+done
+# read -p "Ländercode für WLAN (z.B. DE für Deutschland) [DE]: " COUNTRY_CODE
+# COUNTRY_CODE=${COUNTRY_CODE:-DE}
+
+# --- 5) Passwort ---
 read -p "Möchten Sie ein Passwort für den Access Point setzen? (y/N) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
