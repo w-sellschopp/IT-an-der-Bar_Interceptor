@@ -9,9 +9,54 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
-# User-Abfragen
-read -p "SSID für den Access Point [AP_SSID]: " AP_SSID
-AP_SSID=${AP_SSID:-AP_SSID}
+# ----- Funktionen -----
+valid_ipv4() {
+  local ip=$1
+  if [[ ! $ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    return 1
+  fi
+  IFS='.' read -r o1 o2 o3 o4 <<< "$ip"
+  for o in $o1 $o2 $o3 $o4; do
+    if (( o < 0 || o > 255 )); then
+      return 1
+    fi
+  done
+  return 0
+}
+
+valid_country_code() {
+  local cc=$1
+  if [[ $cc =~ ^[A-Za-z]{2}$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+prompt_with_default() {
+  local prompt_text=$1
+  local default=$2
+  local ret
+  read -r -p "$prompt_text [$default]: " ret
+  if [[ -z "$ret" ]]; then
+    ret=$default
+  fi
+  printf '%s' "$ret"
+}
+
+# ----- User-Abfragen -----
+
+# --- 1) SSID ---
+while true; do
+  AP_SSID=$(prompt_with_default "SSID für den Access Point" "AP_SSID")
+  if [[ -n "${AP_SSID// /}" ]]; then
+    break
+  else
+    echo "SSID darf nicht leer sein. Bitte erneut eingeben."
+  fi
+done
+# read -p "SSID für den Access Point [AP_SSID]: " AP_SSID
+# AP_SSID=${AP_SSID:-AP_SSID}
 
 read -p "IP-Adresse für den AP (z.B. 192.168.4.1): " AP_IP
 AP_IP=${AP_IP:-192.168.4.1}
